@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -15,7 +16,8 @@ import (
 type Server struct {
 	port int
 
-	db database.Service
+	db     database.Service
+	cancel context.CancelFunc
 }
 
 func NewServer() *http.Server {
@@ -36,4 +38,11 @@ func NewServer() *http.Server {
 	}
 
 	return server
+}
+
+// Shutdown gracefully stops the background goroutines
+func (s *Server) Shutdown() {
+	if s.cancel != nil {
+		s.cancel()
+	}
 }
