@@ -1,0 +1,5 @@
+### Test GET /user/:id
+GET http://localhost:8080/user/123
+Accept: application/json
+
+###
