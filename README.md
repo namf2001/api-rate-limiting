@@ -1,3 +1,17 @@
+# API-RATE-LIMITING
+
+High-Performance Rate Limiting System for Go APIs
+
+<div align="center">
+  <img src="https://img.shields.io/badge/last%20commit-today-blue" alt="last commit" />
+  <img src="https://img.shields.io/badge/go-100%25-blue" alt="go" />
+  <img src="https://img.shields.io/badge/algorithms-3-blue" alt="algorithms" />
+</div>
+
+<div align="center">
+  <h3><a href="http://localhost:8080" target="_blank">🚀 Local Demo: http://localhost:8080</a></h3>
+</div>
+
 # API Rate Limiting System
 
 A high-performance rate limiting system built with Go that provides multiple rate limiting algorithms to control API request rates.
