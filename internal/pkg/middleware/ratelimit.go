@@ -3,7 +3,6 @@ package middleware
 import (
 	"github.com/gin-gonic/gin"
 	"golang.org/x/time/rate"
-	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -28,21 +27,24 @@ func GetClientIP(ctx *gin.Context) string {
 }
 
 func RateLimit(ip string) *rate.Limiter {
+	mu.Lock()
+	defer mu.Unlock()
+
 	if client, exists := clients[ip]; exists {
 		if time.Since(client.lastRequestTime) > time.Minute {
-			client.limiter = rate.NewLimiter(1, 3) // Reset limiter every minute
+			client.limiter = rate.NewLimiter(1, 3)
 		}
-		log.Printf("A Client[%s] - {limiter: %+v lastRequestTime: %s} has been created", ip, client.limiter, client.lastRequestTime.Format(time.TimeOnly))
+		client.lastRequestTime = time.Now()
+		//log.Printf("Client[%s] reused – limiter=%+v, lastRequest=%s", ip, client.limiter, client.lastRequestTime.Format(time.TimeOnly))
 		return client.limiter
 	}
 
-	// Create a new client with a rate limiter
 	newClient := &Client{
-		limiter:         rate.NewLimiter(1, 3), // 1 request per second, burst of 3
+		limiter:         rate.NewLimiter(1, 3),
 		lastRequestTime: time.Now(),
 	}
 	clients[ip] = newClient
-	log.Printf("A Client[%s] - {limiter: %+v lastRequestTime: %s} has been created", ip, newClient.limiter, newClient.lastRequestTime.Format(time.TimeOnly))
+	//log.Printf("Client[%s] created – limiter=%+v, lastRequest=%s", ip, newClient.limiter, newClient.lastRequestTime.Format(time.TimeOnly))
 	return newClient.limiter
 }
 
@@ -62,12 +64,13 @@ func RateLimitMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		clientIP := GetClientIP(ctx)
 		limiter := RateLimit(clientIP)
-
 		if !limiter.Allow() {
 			ctx.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
 				"error":   "Too many requests, please try again later.",
 				"message": "You have exceeded the rate limit. Please wait before making more requests.",
 			})
+			return
 		}
+		ctx.Next()
 	}
 }
