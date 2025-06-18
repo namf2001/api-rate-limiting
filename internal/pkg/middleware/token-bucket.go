@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"context"
+	"net"
 	"net/http"
 	"time"
 
@@ -13,13 +15,22 @@ type TokenBucket struct {
 	lastRequestTime time.Time
 }
 
-func ResetTokenBuckets() {
-	mu.Lock()
-	defer mu.Unlock()
+func ResetTokenBuckets(ctx context.Context) {
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
 
-	for ip, bucket := range tokenBuckets {
-		if time.Since(bucket.lastRequestTime) > time.Minute {
-			delete(tokenBuckets, ip)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			mu.Lock()
+			for ip, bucket := range tokenBuckets {
+				if time.Since(bucket.lastRequestTime) > time.Minute {
+					delete(tokenBuckets, ip)
+				}
+			}
+			mu.Unlock()
 		}
 	}
 }
@@ -27,7 +38,14 @@ func ResetTokenBuckets() {
 func GetClientIP(ctx *gin.Context) string {
 	clientIP := ctx.ClientIP()
 	if clientIP == "" {
-		clientIP = ctx.Request.RemoteAddr
+		// Parse IP from RemoteAddr to exclude port number
+		host, _, err := net.SplitHostPort(ctx.Request.RemoteAddr)
+		if err != nil {
+			// If SplitHostPort fails, use RemoteAddr as-is (fallback)
+			clientIP = ctx.Request.RemoteAddr
+		} else {
+			clientIP = host
+		}
 	}
 	return clientIP
 }
@@ -37,13 +55,12 @@ func RateLimit(ip string, rateLimit, burst int) *rate.Limiter {
 	defer mu.Unlock()
 
 	if bucket, exists := tokenBuckets[ip]; exists {
-		if time.Since(bucket.lastRequestTime) > time.Minute {
-			bucket.limiter = rate.NewLimiter(rate.Limit(rateLimit), burst)
-		}
+		// Only update the last request time, no limiter reset logic
 		bucket.lastRequestTime = time.Now()
 		return bucket.limiter
 	}
 
+	// Create new bucket if it doesn't exist
 	newBucket := &TokenBucket{
 		limiter:         rate.NewLimiter(rate.Limit(rateLimit), burst),
 		lastRequestTime: time.Now(),

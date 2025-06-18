@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -13,9 +14,15 @@ import (
 func (s *Server) RegisterRoutes() http.Handler {
 	r := gin.Default()
 
-	go middleware.ResetTokenBuckets()
-	go middleware.ResetFixedWindows()
-	go middleware.ResetSlidingWindows()
+	// Create context with cancellation for graceful shutdown of background goroutines
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// Store the cancel function for later use during server shutdown
+	s.cancel = cancel
+
+	go middleware.ResetTokenBuckets(ctx)
+	go middleware.ResetFixedWindows(ctx)
+	go middleware.ResetSlidingWindows(ctx)
 
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:5173"}, // Add your frontend URL

@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -13,13 +14,22 @@ type FixedWindow struct {
 	lastRequestTime time.Time
 }
 
-func ResetFixedWindows() {
-	mu.Lock()
-	defer mu.Unlock()
+func ResetFixedWindows(ctx context.Context) {
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
 
-	for ip, window := range fixedWindows {
-		if time.Since(window.lastRequestTime) > time.Minute {
-			delete(fixedWindows, ip)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			mu.Lock()
+			for ip, window := range fixedWindows {
+				if time.Since(window.lastRequestTime) > time.Minute {
+					delete(fixedWindows, ip)
+				}
+			}
+			mu.Unlock()
 		}
 	}
 }
