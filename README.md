@@ -1,15 +1,6 @@
 # API Rate Limiting System
 
-A high-performance rate limiting system built with Go that provides multiple rate limiting algorithms to control API request rates from users, similar to systems used by major APIs like Twitter API and GitHub API.
-
-## Problem Description
-
-This project implements a comprehensive Rate Limiter system that restricts the number of requests from a user within a specific time period. The system is designed to:
-
-- Protect APIs from spam and abuse
-- Ensure fair usage among users
-- Maintain system performance under high load
-- Support enterprise-grade scalability
+A high-performance rate limiting system built with Go that provides multiple rate limiting algorithms to control API request rates.
 
 ## Features
 
@@ -18,152 +9,132 @@ This project implements a comprehensive Rate Limiter system that restricts the n
 1. **Fixed Window Rate Limiting**
    - Divides time into fixed windows
    - Simple and memory efficient
-   - Good for basic rate limiting needs
+   - Modular architecture with separate functions
 
 2. **Sliding Window Rate Limiting**
    - More flexible than fixed window
    - Provides smoother request distribution
-   - Better user experience
+   - Enhanced with helper functions for cleanup
 
 3. **Token Bucket Algorithm**
    - Dynamic request rate adjustment
    - Allows burst traffic within limits
-   - Most flexible algorithm
+   - Fully modular design with token management
 
-### System Requirements
+### Architecture
 
-- **Multi-user Support**: Handle concurrent users without performance degradation
-- **High Performance**: Optimized for low latency and high throughput
-- **Scalability**: Utilizes external resources (Redis, PostgreSQL) for distributed systems
-- **Monitoring**: Built-in metrics and logging for rate limit analytics
+Modular architecture with separated concerns:
+- **Check Functions**: Core rate limiting logic
+- **Reset Functions**: Automatic cleanup of inactive clients
+- **Helper Functions**: Utility functions for common operations
+
+## Code Structure
+
+```
+internal/pkg/middleware/
+├── common.go           # Shared utilities
+├── fixed-window.go     # Fixed window algorithm
+├── sliding-window.go   # Sliding window algorithm
+└── token-bucket.go     # Token bucket algorithm
+```
 
 ## Getting Started
 
-## MakeFile
+### Commands
 
-Run build make command with tests
 ```bash
-make all
-```
-
-Build the application
-```bash
+# Build and run
 make build
-```
-
-Run the application
-```bash
 make run
+
+# Development
+make watch      # Live reload
+make test       # Run tests
+
+# Docker
+make docker-run   # Start containers
+make docker-down  # Stop containers
 ```
 
-Create DB container
-```bash
-make docker-run
+## Usage
+
+### As Middleware
+
+```go
+import "github.com/gin-gonic/gin"
+
+router := gin.Default()
+
+// Apply rate limiting
+router.Use(middleware.FixedWindowMiddleware(100, time.Hour))
+router.Use(middleware.SlidingWindowMiddleware(100, time.Hour))
+router.Use(middleware.TokenBucketMiddleware(100, time.Second))
 ```
 
-Shutdown DB Container
-```bash
-make docker-down
-```
+### Individual Functions
 
-DB Integrations Test:
-```bash
-make itest
-```
+```go
+// Check rate limits
+allowed := middleware.CheckFixedWindowLimit("192.168.1.1", 100, time.Hour)
+allowed := middleware.CheckSlidingWindowLimit("192.168.1.1", 100, time.Hour)
+allowed := middleware.CheckTokenBucketLimit("192.168.1.1", 100, time.Second)
 
-Live reload the application:
-```bash
-make watch
-```
-
-Run the test suite:
-```bash
-make test
-```
-
-Clean up binary from the last build:
-```bash
-make clean
-```
-
-## API Endpoints
-
-### Rate Limited Endpoints
-```bash
-# Example protected endpoint
-GET /api/v1/users
-Headers: 
-  X-API-Key: your-api-key
-  
-Response Headers:
-  X-RateLimit-Limit: 100
-  X-RateLimit-Remaining: 95
-  X-RateLimit-Reset: 1640995200
-```
-
-### Admin Endpoints
-```bash
-# Configure rate limits
-POST /admin/rate-limits
-{
-  "user_id": "user123",
-  "algorithm": "token_bucket",
-  "limit": 100,
-  "window": "1h"
-}
-
-# Get rate limit status
-GET /admin/rate-limits/:user_id
-```
-
-## Configuration
-
-Rate limiting can be configured per user, API key, or globally through environment variables:
-
-```env
-# Rate Limiting Settings
-RATE_LIMIT_DEFAULT_ALGORITHM=token_bucket
-RATE_LIMIT_DEFAULT_LIMIT=100
-RATE_LIMIT_DEFAULT_WINDOW=3600s
-RATE_LIMIT_REDIS_URL=redis://localhost:6379
+// Cleanup inactive clients
+middleware.ResetFixedWindows()
+middleware.ResetSlidingWindows()
+middleware.ResetTokenBuckets()
 ```
 
 ## Testing
 
-The project includes comprehensive tests for all rate limiting algorithms:
-
+### Unit Tests
 ```bash
-# Unit tests
-make test
-
-# Integration tests with database
-make itest
-
-# Load testing
-go test -bench=. ./internal/ratelimiter/...
+make test       # Unit tests
+make itest      # Integration tests
 ```
 
-## Performance Benchmarks
+### Load Testing
 
-- **Fixed Window**: ~1M requests/second
-- **Sliding Window**: ~800K requests/second  
-- **Token Bucket**: ~900K requests/second
-- **Memory Usage**: <10MB for 100K concurrent users
+Use Apache Bench (ab) to test rate limiting performance:
 
-## Contributing
+```bash
+# Install Apache Bench (if not already installed)
+# macOS: brew install httpie
+# Ubuntu: sudo apt-get install apache2-utils
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+# Test Fixed Window (assuming endpoint exists)
+ab -c 2 -n 30 http://localhost:8080/fixed
 
-## License
+# Test Sliding Window
+ab -c 2 -n 30 http://localhost:8080/sliding
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+# Test Token Bucket
+ab -c 2 -n 30 http://localhost:8080/token
 
-## Acknowledgments
+# More intensive testing
+ab -c 10 -n 100 http://localhost:8080/sliding
+ab -c 20 -n 200 http://localhost:8080/fixed
+```
 
-- Inspired by rate limiting systems of major APIs
-- Built with Go's excellent concurrency primitives
-- Uses Redis for high-performance caching
+### Other Load Testing Tools
+
+```bash
+# Using curl for simple testing
+for i in {1..10}; do curl http://localhost:8080/sliding; done
+
+# Using wrk (install: brew install wrk)
+wrk -t4 -c10 -d30s http://localhost:8080/sliding
+
+# Using hey (install: go install github.com/rakyll/hey@latest)
+hey -n 100 -c 10 http://localhost:8080/sliding
+```
+
+### Expected Test Results
+
+When testing rate limits, you should see:
+- **200 OK** responses until limit is reached
+- **429 Too Many Requests** when limit exceeded
+- Different behavior patterns for each algorithm:
+  - Fixed Window: Sharp cutoff at window boundary
+  - Sliding Window: Gradual enforcement
+  - Token Bucket: Burst allowance then steady rate
