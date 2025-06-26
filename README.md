@@ -18,6 +18,14 @@ A high-performance rate limiting system built with Go that provides multiple rat
 
 ## Features
 
+### Instagram Media Downloader
+
+The API provides an endpoint to download media (images and videos) from Instagram:
+
+- **Extract downloadable URLs**: Convert Instagram post/reel URLs to direct media URLs
+- **Support for images and videos**: Automatically detects and handles both media types
+- **Error handling**: Proper handling for private accounts, non-existent media, and invalid URLs
+
 ### Rate Limiting Algorithms
 
 1. **Fixed Window Rate Limiting**
@@ -97,6 +105,49 @@ allowed := middleware.CheckTokenBucketLimit("192.168.1.1", 100, time.Second)
 middleware.ResetFixedWindows()
 middleware.ResetSlidingWindows()
 middleware.ResetTokenBuckets()
+```
+
+### Instagram Downloader API
+
+Use the Instagram downloader endpoint to extract direct media URLs:
+
+```bash
+# Download an Instagram image or video
+curl -X POST http://localhost:8080/instagram/download \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://www.instagram.com/p/EXAMPLE_POST_ID/"}'
+```
+
+Example response:
+
+```json
+{
+  "download_url": "https://scontent.cdninstagram.com/v/t51.2885-15/123456789_123456789_123456789_n.jpg?...",
+  "media_type": "image"
+}
+```
+
+Error responses:
+
+For invalid URL:
+```json
+{
+  "error": "Invalid Instagram URL"
+}
+```
+
+For private account:
+```json
+{
+  "error": "media is from a private account"
+}
+```
+
+For not found media:
+```json
+{
+  "error": "media not found or has been deleted"
+}
 ```
 
 ## Testing

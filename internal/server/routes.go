@@ -35,6 +35,9 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	r.GET("/health", s.healthHandler)
 
+	// Instagram download endpoint
+	r.POST("/instagram/download", s.InstagramDownloadHandler)
+
 	// Fixed Window: 3 request/10 seconds
 	r.GET("/fixed", middleware.FixedWindowMiddleware(3, time.Second), s.TestHandler("Fixed Window"))
 

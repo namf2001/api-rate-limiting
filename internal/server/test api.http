@@ -1,0 +1,64 @@
+### GET request to example server
+GET https://examples.http-client.intellij.net/get
+    ?generated-in=GoLand
+
+###
+
+### Instagram Download API - Valid Post
+POST http://localhost:8080/instagram/download
+Content-Type: application/json
+
+{
+  "url": "https://www.instagram.com/p/CxZcX1DP8pi/"
+}
+
+###
+
+### Instagram Download API - Valid Reel
+POST http://localhost:8080/instagram/download
+Content-Type: application/json
+
+{
+  "url": "https://www.instagram.com/reels/DLP-fgfpnhZ/"
+}
+
+###
+
+### Instagram Download API - Valid Story
+POST http://localhost:8080/instagram/download
+Content-Type: application/json
+
+{
+  "url": "https://www.instagram.com/stories/fcbarcelona/3661468037567118112/"
+}
+
+###
+
+### Instagram Download API - Invalid URL Format
+POST http://localhost:8080/instagram/download
+Content-Type: application/json
+
+{
+  "url": "not-a-url"
+}
+
+###
+
+### Instagram Download API - Non-Instagram URL
+POST http://localhost:8080/instagram/download
+Content-Type: application/json
+
+{
+  "url": "https://example.com"
+}
+
+###
+
+### Instagram Download API - Missing URL
+POST http://localhost:8080/instagram/download
+Content-Type: application/json
+
+{
+}
+
+###
